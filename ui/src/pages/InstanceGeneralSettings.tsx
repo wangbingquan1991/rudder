@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal, Check, ChevronsUpDown } from "lucide-react";
 import { instanceSettingsApi } from "@/api/instanceSettings";
 import {
   SettingsChoiceCard,
@@ -10,6 +10,22 @@ import {
   SettingsToggle,
 } from "@/components/settings/SettingsScaffold";
 import { SettingsPageSkeleton } from "@/components/settings/SettingsPageSkeleton";
+import { Slider } from "@/components/ui/slider";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { useI18n } from "../context/I18nContext";
 import { useTheme } from "../context/ThemeContext";
@@ -19,6 +35,24 @@ import {
   readDesktopShell,
   type DesktopUpdateChannel,
 } from "@/lib/desktop-shell";
+
+function FontPreview({ font, label }: { font: string; label: string }) {
+  const [previewText, setPreviewText] = useState("The quick brown fox jumps over the lazy dog");
+  return (
+    <div className="rounded-[calc(var(--radius-md)-4px)] border border-white/8 bg-[color:color-mix(in_oklab,var(--surface-shell)_82%,transparent)] p-3">
+      <div className="text-base" style={{ fontFamily: font }}>
+        {label}
+      </div>
+      <input
+        type="text"
+        value={previewText}
+        onChange={(e) => setPreviewText(e.target.value)}
+        className="mt-1 w-full bg-transparent text-xs text-muted-foreground outline-none focus:underline"
+        style={{ fontFamily: font }}
+      />
+    </div>
+  );
+}
 
 function ThemePreview({ mode }: { mode: "light" | "system" | "dark" }) {
   return (
@@ -100,7 +134,10 @@ export function InstanceGeneralSettings() {
   const [desktopUpdatesSupported, setDesktopUpdatesSupported] = useState(false);
   const [updateChannel, setUpdateChannel] = useState<DesktopUpdateChannel>("stable");
   const [updateChannelPending, setUpdateChannelPending] = useState(false);
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, fontFamily, fontSizeScale, uiScale, setFontFamily, setFontSizeScale, setUiScale } = useTheme();
+  const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [systemFonts, setSystemFonts] = useState<string[]>([]);
 
   useEffect(() => {
     setBreadcrumbs([
@@ -108,6 +145,35 @@ export function InstanceGeneralSettings() {
       { label: t("common.general") },
     ]);
   }, [setBreadcrumbs, t]);
+
+  // Load system fonts on mount
+  useEffect(() => {
+    if (typeof document === "undefined" || !("fonts" in document)) return;
+
+    let cancelled = false;
+
+    async function loadSystemFonts() {
+      const fonts = await document.fonts.ready;
+      if (cancelled) return;
+
+      const fontSet = new Set<string>();
+      // Add our preset fonts first
+      ["Inter", "system-ui", "JetBrains Sans", "Lexend Deca", "LXGW WenKai Mono", "霞鹜文楷等宽"].forEach(f => fontSet.add(f));
+
+      for (const font of fonts) {
+        fontSet.add(font.family);
+      }
+
+      const sorted = Array.from(fontSet).sort((a, b) => a.localeCompare(b));
+      setSystemFonts(sorted);
+    }
+
+    void loadSystemFonts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const generalQuery = useQuery({
     queryKey: queryKeys.instance.generalSettings,
@@ -173,7 +239,7 @@ export function InstanceGeneralSettings() {
 
   const censorUsernameInLogs = generalQuery.data?.censorUsernameInLogs === true;
   const showDeveloperDiagnostics = generalQuery.data?.showDeveloperDiagnostics === true;
-  const locale = generalQuery.data?.locale ?? "en";
+  const locale = generalQuery.data?.locale ?? "zh-CN";
 
   async function handleUpdateChannelToggle() {
     const desktopShell = readDesktopShell();
@@ -322,6 +388,181 @@ export function InstanceGeneralSettings() {
             preview={<ThemePreview mode="dark" />}
           />
         </div>
+      </div>
+
+      <SettingsDivider />
+
+      <div className="space-y-4">
+        <SettingsRow
+          title={t("general.typography.fontFamily")}
+          description={t("general.typography.fontFamilyDescription")}
+          className="border-t-0 pt-0"
+          action={
+            <div className="w-64">
+              <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    className="w-full justify-between"
+                  >
+                    {typeof fontFamily === 'string' ? (
+                      Object.prototype.hasOwnProperty.call({
+                        inter: "Inter",
+                        system: t("general.typography.options.system.label"),
+                        jetbrains: "JetBrains",
+                        lexend: "Lexend",
+                        xiawu: t("general.typography.options.xiawu.label"),
+                      }, fontFamily)
+                        ? (
+                          {
+                            inter: "Inter",
+                            system: t("general.typography.options.system.label"),
+                            jetbrains: "JetBrains",
+                            lexend: "Lexend",
+                            xiawu: t("general.typography.options.xiawu.label"),
+                          } as Record<string, string>
+                        )[fontFamily]
+                        : fontFamily
+                    ) : "Inter"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[280px] p-0">
+                  <Command>
+                    <CommandInput
+                      placeholder={t("general.typography.searchFont")}
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
+                    />
+                    <CommandList>
+                      <CommandEmpty>{t("general.typography.noFontFound")}</CommandEmpty>
+                      <CommandGroup>
+                        {systemFonts
+                          .filter(font =>
+                            font.toLowerCase().includes(searchQuery.toLowerCase())
+                          )
+                          .slice(0, 50) // Limit to 50 for performance
+                          .map(font => {
+                            const displayName = Object.prototype.hasOwnProperty.call({
+                              inter: "Inter",
+                              system: t("general.typography.options.system.label"),
+                              jetbrains: "JetBrains",
+                              lexend: "Lexend",
+                              xiawu: t("general.typography.options.xiawu.label"),
+                            }, font)
+                              ? (
+                                {
+                                  inter: "Inter",
+                                  system: t("general.typography.options.system.label"),
+                                  jetbrains: "JetBrains",
+                                  lexend: "Lexend",
+                                  xiawu: t("general.typography.options.xiawu.label"),
+                                } as Record<string, string>
+                              )[font]
+                              : font;
+                            return (
+                              <CommandItem
+                                key={font}
+                                value={font}
+                                onSelect={(currentValue) => {
+                                  // Map display name back to our preset keys
+                                  const actualValue =
+                                    currentValue === t("general.typography.options.system.label")
+                                      ? "system"
+                                      : currentValue === t("general.typography.options.xiawu.label")
+                                        ? "xiawu"
+                                        : currentValue === "Inter"
+                                          ? "inter"
+                                          : currentValue === "JetBrains"
+                                            ? "jetbrains"
+                                            : currentValue === "Lexend"
+                                              ? "lexend"
+                                              : currentValue;
+                                  setFontFamily(actualValue);
+                                  setOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    fontFamily === font ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {displayName}
+                              </CommandItem>
+                            );
+                          })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+          }
+        />
+
+        <div className="px-1">
+          <FontPreview
+            font={
+              fontFamily === "inter"
+                ? '"Inter", sans-serif'
+                : fontFamily === "system"
+                  ? 'system-ui, -apple-system, sans-serif'
+                  : fontFamily === "jetbrains"
+                    ? '"JetBrains Sans", sans-serif'
+                    : fontFamily === "lexend"
+                      ? '"Lexend Deca", sans-serif'
+                      : '"霞鹜文楷等宽", "LXGW WenKai Mono", sans-serif'
+            }
+            label={
+              fontFamily === "inter"
+                ? "Inter"
+                : fontFamily === "system"
+                  ? t("general.typography.options.system.label")
+                  : fontFamily === "jetbrains"
+                    ? "JetBrains"
+                    : fontFamily === "lexend"
+                      ? "Lexend"
+                      : t("general.typography.options.xiawu.label")
+            }
+          />
+        </div>
+
+        <SettingsRow
+          title={t("general.typography.fontSize")}
+          description={`${t("general.typography.fontSizeDescription")} ${fontSizeScale}%`}
+          className="border-t-0 pt-0"
+          action={
+            <div className="w-48">
+              <Slider
+                min={90}
+                max={300}
+                step={5}
+                value={[fontSizeScale]}
+                onValueChange={(values: number[]) => setFontSizeScale(values[0])}
+              />
+            </div>
+          }
+        />
+
+        <SettingsRow
+          title={t("general.typography.uiScale")}
+          description={`${t("general.typography.uiScaleDescription")} ${uiScale}%`}
+          className="border-t-0 pt-0"
+          action={
+            <div className="w-48">
+              <Slider
+                min={70}
+                max={200}
+                step={5}
+                value={[uiScale]}
+                onValueChange={(values: number[]) => setUiScale(values[0])}
+              />
+            </div>
+          }
+        />
       </div>
     </div>
   );

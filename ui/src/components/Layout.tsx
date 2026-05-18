@@ -21,6 +21,7 @@ import { usePanel } from "../context/PanelContext";
 import { useOrganization } from "../context/OrganizationContext";
 import { NavigationBackProvider } from "../context/NavigationBackContext";
 import { useSidebar } from "../context/SidebarContext";
+import { useTheme } from "../context/ThemeContext";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useOrganizationPageMemory } from "../hooks/useOrganizationPageMemory";
 import { useScrollbarActivityRef } from "../hooks/useScrollbarActivityRef";
@@ -221,6 +222,7 @@ function readRememberedWorkspaceColumnWidth(family: WorkspaceColumnFamily): numb
 
 export function Layout() {
   const { t } = useI18n();
+  const { uiScale } = useTheme();
   const queryClient = useQueryClient();
   const { sidebarOpen, setSidebarOpen, toggleSidebar, isMobile } = useSidebar();
   const {
@@ -698,6 +700,7 @@ export function Layout() {
         "app-shell-backdrop text-foreground pt-[env(safe-area-inset-top)]",
         isMobile ? "min-h-dvh" : "flex h-dvh flex-col overflow-hidden",
       )}
+      style={uiScale !== 100 ? { zoom: `${uiScale / 100}` } : undefined}
     >
       <a
         href="#main-content"

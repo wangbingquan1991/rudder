@@ -106,7 +106,7 @@ function RailNavItem({
       onDoubleClick={onDoubleClick}
       className={({ isActive }) =>
         cn(
-          "relative z-10 flex min-h-[56px] w-[66px] translate-x-1 flex-col items-center justify-center gap-1 rounded-[var(--radius-sm)] px-1 py-2 text-[9px] font-medium leading-[1.05] transition-colors",
+          "relative z-10 flex min-h-[56px] w-[72px] translate-x-1 flex-col items-center justify-center gap-1 rounded-[var(--radius-sm)] px-1 py-2 text-[10px] font-medium leading-[1.05] transition-colors",
           (active ?? isActive)
             ? "text-[#def4eb] dark:text-[#def4eb]"
             : [
@@ -318,7 +318,7 @@ export function PrimaryRail({
       data-tour-target="primary-rail"
       className={cn(
         "my-2 flex h-[calc(100%-1rem)] shrink-0 flex-col items-center py-1.5 text-[color:color-mix(in_oklab,var(--foreground)_78%,white)]",
-        isDesktopShell ? "ml-3 mr-1 w-[40px]" : "ml-2 mr-3 px-5 w-[50px]",
+        isDesktopShell ? "ml-3 mr-1 w-[64px]" : "ml-2 mr-3 px-5 w-[72px]",
       )}
     >
       <div className="flex w-full flex-col items-center gap-4">
